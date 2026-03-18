@@ -1,5 +1,7 @@
 # ⚡️ GPUWatch
 
+> 🚧 **Alpha** — Core collection working, dashboard WIP
+
 **Because GPU pricing shouldn't be a black box.**
 
 Real-time GPU cloud pricing tracker, comparator, and analytics engine. Track prices across 12+ providers, spot arbitrage opportunities, and analyze market trends.
@@ -56,7 +58,7 @@ The GPU cloud market is fragmented and opaque. Prices for the same GPU can vary 
 ### Installation
 
 ```bash
-git clone https://github.com/YOUR_ORG/GPUWatch.git
+git clone https://github.com/KieranFinn/GPUWatch.git
 cd GPUWatch
 pip install -r requirements.txt
 ```
@@ -155,4 +157,6 @@ MIT
 
 <p align="center">
   <b>GPUWatch</b> — Track every GPU, on every cloud, at every price point. ⚡️
+</p>
+ery GPU, on every cloud, at every price point. ⚡️
 </p>

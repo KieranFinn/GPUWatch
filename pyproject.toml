@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpuwatch"
+version = "0.1.0"
+description = "GPU cloud pricing tracker, comparator, and analytics engine"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "gpuhunt>=0.0.1",
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "requests>=2.28.0",
+]
+
+[project.scripts]
+gpuwatch = "gpu_price_tracker:main"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
