@@ -2,7 +2,7 @@
 
 **Because GPU pricing shouldn't be a black box.**
 
-Real-time GPU cloud pricing tracker, comparator, and analytics engine. Track prices across 12+ providers, spot arbitrage opportunities, and analyze market trends — the CoinGecko for GPU compute.
+Real-time GPU cloud pricing tracker, comparator, and analytics engine. Track prices across 12+ providers, spot arbitrage opportunities, and analyze market trends.
 
 ---
 
