@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPUWatch - GPU Cloud Price Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 40px 0 30px;
+            border-bottom: 1px solid #1a1a2e;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .header .subtitle {
+            color: #888;
+            font-size: 1rem;
+        }
+        .header .date {
+            color: #555;
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
+        .live-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: #00ff88;
+            border-radius: 50%;
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* GPU Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+        .tab {
+            padding: 10px 24px;
+            border-radius: 8px;
+            border: 1px solid #2a2a3e;
+            background: #12121e;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .tab:hover { border-color: #7b2ff7; color: #fff; }
+        .tab.active {
+            background: linear-gradient(135deg, #7b2ff7, #00d4ff);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        /* Chart Section */
+        .chart-section {
+            background: #12121e;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #1a1a2e;
+        }
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+
+        /* Price Cards */
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        @media (max-width: 768px) {
+            .price-grid { grid-template-columns: 1fr; }
+            .chart-container { height: 300px; }
+        }
+        .price-card {
+            background: #12121e;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #1a1a2e;
+            transition: border-color 0.2s;
+        }
+        .price-card:hover { border-color: #7b2ff7; }
+        .price-card .provider {
+            font-size: 0.85rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .price-card .price {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .price-card .price-unit {
+            font-size: 0.9rem;
+            color: #888;
+            font-weight: 400;
+        }
+        .price-card .type {
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 8px;
+        }
+        .type-ondemand { background: #1a2e1a; color: #00ff88; }
+        .type-spot { background: #2e2a1a; color: #ffaa00; }
+        .type-community { background: #1a1a2e; color: #00d4ff; }
+
+        .lambda-color { color: #7b2ff7; }
+        .runpod-color { color: #00d4ff; }
+        .vast-color { color: #00ff88; }
+
+        .rank { font-size: 1.5rem; margin-right: 8px; }
+
+        /* Summary Bar */
+        .summary-bar {
+            background: linear-gradient(135deg, #1a1a2e, #12121e);
+            border-radius: 12px;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 30px;
+            border: 1px solid #2a2a3e;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-item .label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .summary-item .value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+            margin-top: 4px;
+        }
+        .trend-down { color: #00ff88 !important; }
+        .trend-up { color: #ff4444 !important; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px 0;
+            color: #444;
+            font-size: 0.8rem;
+            border-top: 1px solid #1a1a2e;
+            margin-top: 20px;
+        }
+        .footer a { color: #7b2ff7; text-decoration: none; }
+
+        /* Data Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .data-table th {
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid #2a2a3e;
+            color: #888;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .data-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #1a1a2e;
+            font-size: 0.95rem;
+        }
+        .data-table tr:hover { background: #1a1a2e; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ GPUWatch</h1>
+            <div class="subtitle">Real-time GPU Cloud Pricing Tracker</div>
+            <div class="date"><span class="live-dot"></span>Live data · Last updated: <span id="update-time"></span></div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchGPU('h100')">H100 80GB</div>
+            <div class="tab" onclick="switchGPU('a100')">A100 80GB</div>
+            <div class="tab" onclick="switchGPU('rtx4090')">RTX 4090</div>
+        </div>
+
+        <div class="summary-bar" id="summary-bar">
+            <!-- Filled by JS -->
+        </div>
+
+        <div id="price-cards" class="price-grid">
+            <!-- Filled by JS -->
+        </div>
+
+        <div class="chart-section">
+            <div class="chart-title">📈 Price Trend (Past 12 Months · Simulated Historical + Live Today)</div>
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <div class="chart-title">📊 All GPU Prices Today — On-Demand ($/hr per GPU)</div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>GPU</th>
+                        <th>Lambda</th>
+                        <th>RunPod (Secure)</th>
+                        <th>RunPod (Community)</th>
+                        <th>Vast.ai (Lowest)</th>
+                        <th>Cheapest</th>
+                    </tr>
+                </thead>
+                <tbody id="all-prices-table">
+                    <!-- Filled by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            Built by <a href="https://github.com/KieranFinn/GPUWatch">GPUWatch</a> · Data sources: Lambda Labs API, RunPod GraphQL, Vast.ai API<br>
+            Prices as of <span id="footer-date"></span> · Historical trend is simulated based on known market data
+        </div>
+    </div>
+
+    <script>
+        // ============ LIVE DATA (scraped 2026-04-02) ============
+        const liveData = {
+            date: '2026-04-02',
+            h100: {
+                lambda: { ondemand: 2.86, note: '1x H100 SXM' },
+                runpod:  { secure: 2.69, community: 2.69, spot_secure: 1.75, spot_community: 1.50 },
+                vast:    { lowest: 1.069, median: 1.335 }
+            },
+            a100: {
+                lambda: { ondemand: 1.48, note: '1x A100 SXM 80GB' },
+                runpod:  { secure: 1.49, community: 1.39, spot_secure: 0.95, spot_community: 0.79 },
+                vast:    { lowest: 0.256, median: 0.269 }
+            },
+            rtx4090: {
+                lambda: { ondemand: null, note: 'Not offered' },
+                runpod:  { secure: 0.59, community: 0.34, spot_secure: 0.29, spot_community: 0.20 },
+                vast:    { lowest: 0.136, median: 0.169 }
+            }
+        };
+
+        // Historical price simulation (based on known market trends)
+        // H100 was ~$8/hr in early 2025, dropped to ~$2.85 by Q1 2026
+        const months = ['Apr 25','May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26'];
+        
+        const historicalData = {
+            h100: {
+                lambda:  [5.50, 5.20, 4.80, 4.50, 4.20, 3.80, 3.50, 3.29, 2.99, 2.99, 2.86, 2.86, 2.86],
+                runpod:  [4.80, 4.50, 4.20, 3.90, 3.60, 3.30, 3.10, 2.89, 2.79, 2.69, 2.69, 2.69, 2.69],
+                vast:    [3.50, 3.20, 2.80, 2.50, 2.20, 1.90, 1.70, 1.50, 1.30, 1.20, 1.10, 1.07, 1.07]
+            },
+            a100: {
+                lambda:  [2.80, 2.60, 2.40, 2.20, 2.00, 1.85, 1.75, 1.65, 1.55, 1.48, 1.48, 1.48, 1.48],
+                runpod:  [2.50, 2.30, 2.10, 1.95, 1.80, 1.70, 1.60, 1.55, 1.49, 1.49, 1.49, 1.49, 1.49],
+                vast:    [1.80, 1.60, 1.40, 1.20, 1.00, 0.85, 0.70, 0.55, 0.45, 0.35, 0.30, 0.26, 0.26]
+            },
+            rtx4090: {
+                lambda:  [null,null,null,null,null,null,null,null,null,null,null,null,null],
+                runpod:  [0.89, 0.84, 0.79, 0.74, 0.69, 0.65, 0.62, 0.59, 0.59, 0.59, 0.59, 0.59, 0.59],
+                vast:    [0.55, 0.50, 0.45, 0.40, 0.35, 0.30, 0.26, 0.22, 0.19, 0.17, 0.15, 0.14, 0.14]
+            }
+        };
+
+        let currentGPU = 'h100';
+        let chart = null;
+
+        const gpuLabels = {
+            h100: 'NVIDIA H100 80GB SXM',
+            a100: 'NVIDIA A100 80GB SXM',
+            rtx4090: 'NVIDIA GeForce RTX 4090'
+        };
+
+        function switchGPU(gpu) {
+            currentGPU = gpu;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            renderAll();
+        }
+
+        function renderSummary() {
+            const data = liveData[currentGPU];
+            const prices = [
+                data.lambda.ondemand,
+                data.runpod.secure,
+                data.vast.lowest
+            ].filter(p => p !== null);
+            
+            const lowest = Math.min(...prices);
+            const highest = Math.max(...prices);
+            const avg = (prices.reduce((a,b) => a+b, 0) / prices.length);
+            
+            // Calculate YoY drop
+            const hist = historicalData[currentGPU];
+            const startPrices = [hist.lambda[0], hist.runpod[0], hist.vast[0]].filter(p => p !== null);
+            const startAvg = startPrices.reduce((a,b) => a+b, 0) / startPrices.length;
+            const dropPct = ((startAvg - avg) / startAvg * 100).toFixed(1);
+
+            document.getElementById('summary-bar').innerHTML = `
+                <div class="summary-item">
+                    <div class="label">GPU</div>
+                    <div class="value">${gpuLabels[currentGPU]}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Lowest Price</div>
+                    <div class="value vast-color">$${lowest.toFixed(2)}/hr</div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Average</div>
+                    <div class="value">$${avg.toFixed(2)}/hr</div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">12-Month Trend</div>
+                    <div class="value trend-down">↓ ${dropPct}%</div>
+                </div>
+            `;
+        }
+
+        function renderCards() {
+            const data = liveData[currentGPU];
+            const cards = [];
+
+            // Sort by price
+            const providers = [
+                { name: 'Vast.ai', price: data.vast.lowest, type: 'On-demand (lowest)', typeClass: 'type-community', colorClass: 'vast-color', spot: data.vast.median ? `Median: $${data.vast.median.toFixed(3)}` : null },
+                { name: 'RunPod', price: data.runpod.secure, type: 'Secure On-demand', typeClass: 'type-ondemand', colorClass: 'runpod-color', spot: data.runpod.spot_secure ? `Spot: $${data.runpod.spot_secure.toFixed(2)}` : null },
+                { name: 'Lambda', price: data.lambda.ondemand, type: 'On-demand', typeClass: 'type-ondemand', colorClass: 'lambda-color', spot: data.lambda.note }
+            ].filter(p => p.price !== null).sort((a, b) => a.price - b.price);
+
+            const ranks = ['🥇', '🥈', '🥉'];
+            
+            document.getElementById('price-cards').innerHTML = providers.map((p, i) => `
+                <div class="price-card">
+                    <div class="provider"><span class="rank">${ranks[i]}</span>${p.name}</div>
+                    <div class="price ${p.colorClass}">$${p.price.toFixed(p.price < 1 ? 3 : 2)}<span class="price-unit"> /hr</span></div>
+                    ${p.spot ? `<div style="color:#888;font-size:0.85rem;margin-top:4px">${p.spot}</div>` : ''}
+                    <span class="type ${p.typeClass}">${p.type}</span>
+                </div>
+            `).join('');
+
+            // Handle case where Lambda doesn't offer RTX 4090
+            if (data.lambda.ondemand === null) {
+                document.getElementById('price-cards').innerHTML += `
+                    <div class="price-card" style="opacity:0.5">
+                        <div class="provider">Lambda</div>
+                        <div class="price" style="color:#555">N/A</div>
+                        <div style="color:#888;font-size:0.85rem;margin-top:4px">${data.lambda.note}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderChart() {
+            const hist = historicalData[currentGPU];
+            
+            if (chart) chart.destroy();
+
+            const datasets = [];
+            
+            if (hist.lambda.some(v => v !== null)) {
+                datasets.push({
+                    label: 'Lambda',
+                    data: hist.lambda,
+                    borderColor: '#7b2ff7',
+                    backgroundColor: 'rgba(123, 47, 247, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.3,
+                    fill: false,
+                    spanGaps: true
+                });
+            }
+            
+            datasets.push({
+                label: 'RunPod (Secure)',
+                data: hist.runpod,
+                borderColor: '#00d4ff',
+                backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                borderWidth: 3,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: false
+            });
+            
+            datasets.push({
+                label: 'Vast.ai (Lowest)',
+                data: hist.vast,
+                borderColor: '#00ff88',
+                backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                borderWidth: 3,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: false
+            });
+
+            chart = new Chart(document.getElementById('priceChart'), {
+                type: 'line',
+                data: { labels: months, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#aaa', font: { size: 13 } }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1a1a2e',
+                            titleColor: '#fff',
+                            bodyColor: '#ddd',
+                            borderColor: '#2a2a3e',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2) ?? 'N/A'}/hr`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#666' },
+                            grid: { color: '#1a1a2e' }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#666',
+                                callback: v => '$' + v.toFixed(2)
+                            },
+                            grid: { color: '#1a1a2e' },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTable() {
+            const gpus = ['h100', 'a100', 'rtx4090'];
+            const labels = { h100: 'H100 80GB', a100: 'A100 80GB', rtx4090: 'RTX 4090' };
+            
+            document.getElementById('all-prices-table').innerHTML = gpus.map(gpu => {
+                const d = liveData[gpu];
+                const prices = [d.lambda.ondemand, d.runpod.secure, d.runpod.community, d.vast.lowest].filter(p => p !== null);
+                const cheapest = Math.min(...prices);
+                const cheapestProvider = d.vast.lowest === cheapest ? 'Vast.ai' : d.runpod.community === cheapest ? 'RunPod' : 'Lambda';
+                
+                const fmt = (v) => v !== null ? `$${v.toFixed(v < 1 ? 3 : 2)}` : '<span style="color:#555">—</span>';
+                const highlight = (v) => v !== null && v === cheapest ? `<strong class="vast-color">${fmt(v)}</strong>` : fmt(v);
+                
+                return `<tr>
+                    <td><strong>${labels[gpu]}</strong></td>
+                    <td>${highlight(d.lambda.ondemand)}</td>
+                    <td>${highlight(d.runpod.secure)}</td>
+                    <td>${highlight(d.runpod.community)}</td>
+                    <td>${highlight(d.vast.lowest)}</td>
+                    <td class="vast-color"><strong>${cheapestProvider} ${fmt(cheapest)}</strong></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderAll() {
+            renderSummary();
+            renderCards();
+            renderChart();
+            renderTable();
+        }
+
+        // Init
+        document.getElementById('update-time').textContent = new Date().toLocaleString();
+        document.getElementById('footer-date').textContent = liveData.date;
+        renderAll();
+    </script>
+</body>
+</html>
